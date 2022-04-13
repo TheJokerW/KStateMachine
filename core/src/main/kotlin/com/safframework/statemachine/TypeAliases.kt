@@ -2,6 +2,9 @@ package com.safframework.statemachine
 
 import com.safframework.statemachine.state.State
 import com.safframework.statemachine.transition.Transition
+import kotlinx.coroutines.CoroutineScope
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  *
@@ -13,6 +16,7 @@ import com.safframework.statemachine.transition.Transition
  */
 typealias StateAction = (State) -> Unit
 
-typealias TransitionAction = (Transition) -> Unit
+typealias Guard = () -> Boolean
 
-typealias Guard = ()->Boolean
+class TransitionAction(val coroutineContext:CoroutineContext = EmptyCoroutineContext, val action:suspend (Transition, CoroutineScope) -> Unit)
+

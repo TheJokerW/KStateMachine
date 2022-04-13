@@ -3,6 +3,8 @@ package com.safframework.statemachine.context
 import com.safframework.statemachine.model.BaseEvent
 import com.safframework.statemachine.model.BaseState
 import com.safframework.statemachine.transition.Transition
+import kotlinx.coroutines.CoroutineScope
+import kotlin.coroutines.CoroutineContext
 
 /**
  * 状态上下文
@@ -25,4 +27,7 @@ interface StateContext {
     fun setException(exception: Exception)
 
     fun getTransition(): Transition
+
+    fun getCoroutineScope(): CoroutineScope
+
 }

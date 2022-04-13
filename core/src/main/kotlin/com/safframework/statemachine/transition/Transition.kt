@@ -5,6 +5,10 @@ import com.safframework.statemachine.TransitionAction
 import com.safframework.statemachine.context.StateContext
 import com.safframework.statemachine.model.BaseEvent
 import com.safframework.statemachine.model.BaseState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 从一个状态切换到另一个状态
@@ -17,12 +21,11 @@ import com.safframework.statemachine.model.BaseState
 class Transition(private val event: BaseEvent, private val sourceState: BaseState, private val targetState: BaseState, private val transitionType: TransitionType, private var guard: Guard?= null) {
 
     private val actions = mutableListOf<TransitionAction>()
-
     /**
      * 是否转换
      * @param context
      */
-    fun transit(context: StateContext): Boolean {
+    suspend fun transit(context: StateContext): Boolean {
         executeTransitionActions(context)
         return context.getException() == null
     }
@@ -30,10 +33,12 @@ class Transition(private val event: BaseEvent, private val sourceState: BaseStat
     /**
      * 执行 Transition 的 Action
      */
-    private fun executeTransitionActions(context: StateContext) {
-        actions.forEach {
+    private suspend fun executeTransitionActions(context: StateContext) {
+        actions.forEach { action ->
             try {
-                it.invoke(this)
+                withContext(context.getCoroutineScope().coroutineContext+action.coroutineContext){
+                    action.action(this@Transition,context.getCoroutineScope())
+                }
             } catch (e:Exception) {
                 context.setException(e)
                 return
@@ -44,8 +49,15 @@ class Transition(private val event: BaseEvent, private val sourceState: BaseStat
     /**
      * 添加一个 action，在状态转换时执行
      */
-    fun action(action: TransitionAction):Transition {
-        actions.add(action)
+    fun tranAction(context: CoroutineContext = EmptyCoroutineContext, action: (Transition, CoroutineScope) -> Unit):Transition {
+        action{
+            TransitionAction(context, action)
+        }
+        return this
+    }
+
+    private fun action(action: () -> TransitionAction):Transition {
+        actions.add(action.invoke())
         return this
     }
 

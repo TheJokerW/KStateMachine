@@ -3,6 +3,8 @@ package com.safframework.statemachine.context
 import com.safframework.statemachine.model.BaseEvent
 import com.safframework.statemachine.model.BaseState
 import com.safframework.statemachine.transition.Transition
+import kotlinx.coroutines.CoroutineScope
+import kotlin.coroutines.CoroutineContext
 
 /**
  * 默认的状态上下文
@@ -16,7 +18,8 @@ class DefaultStateContext(private val event: BaseEvent,
                           private val transition: Transition,
                           private val source: BaseState,
                           private val target: BaseState,
-                          private var e: Exception?=null ) :StateContext {
+                          private var e: Exception?=null ,
+                          private var coroutineScope: CoroutineScope ) :StateContext {
 
     override fun getEvent(): BaseEvent = event
 
@@ -31,4 +34,6 @@ class DefaultStateContext(private val event: BaseEvent,
     }
 
     override fun getTransition(): Transition = transition
+
+    override fun getCoroutineScope(): CoroutineScope = coroutineScope
 }

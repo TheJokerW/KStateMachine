@@ -10,7 +10,14 @@ import com.safframework.statemachine.model.BaseState
 import com.safframework.statemachine.state.State
 import com.safframework.statemachine.transition.Transition
 import com.safframework.statemachine.transition.TransitionType
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.io.Closeable
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.Lock
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  *
@@ -20,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @date: 2020-02-14 21:50
  * @version: V1.0 <描述当前版本功能>
  */
-class StateMachine private constructor(var name: String?=null,private val initialState: BaseState) {
+class StateMachine private constructor(var name: String,private val initialState: BaseState) {
 
     @Volatile
     private lateinit var currentState: State    // 当前状态
@@ -32,7 +39,9 @@ class StateMachine private constructor(var name: String?=null,private val initia
     private val path = mutableListOf<StateMachine>()
     internal val descendantStates: MutableSet<State> = mutableSetOf()
     lateinit var container:State
-
+    val lock by lazy{
+        Mutex()
+    }
     /**
      * 设置状态机全局的拦截器，使用时必须要在 initialize() 之前
      * @param event: 状态机全局的拦截器
@@ -91,11 +100,16 @@ class StateMachine private constructor(var name: String?=null,private val initia
     /**
      * 发送消息，驱动状态的转换
      */
-    @Synchronized
-    fun sendEvent(event: BaseEvent): Boolean = if (isCurrentStateInitialized()) currentState.processEvent(event) else false
+    suspend fun sendEvent(event: BaseEvent):Boolean {
+        return if (isCurrentStateInitialized()) {
+            currentState.processEvent(event)
+        }else{
+            false
+        }
+    }
 
-    internal fun executeTransition(transition: Transition, event: BaseEvent) {
-        val stateContext: StateContext = DefaultStateContext(event, transition, transition.getSourceState(), transition.getTargetState())
+    internal suspend fun executeTransition(transition: Transition, event: BaseEvent) {
+        val stateContext: StateContext = DefaultStateContext(event, transition, transition.getSourceState(), transition.getTargetState(),null,stateScope)
         when (transition.getTransitionType()) {
             TransitionType.External -> doExternalTransition(stateContext)
             TransitionType.Local    -> doLocalTransition(stateContext)
@@ -103,13 +117,13 @@ class StateMachine private constructor(var name: String?=null,private val initia
         }
     }
 
-    private fun doExternalTransition(stateContext: StateContext) {
+    private suspend fun doExternalTransition(stateContext: StateContext) {
         val targetState = getState(stateContext.getTarget())
         val lowestCommonAncestor: StateMachine = findLowestCommonAncestor(targetState)
         lowestCommonAncestor.switchState(stateContext)
     }
 
-    private fun doLocalTransition(stateContext: StateContext) {
+    private suspend fun doLocalTransition(stateContext: StateContext) {
         val previousState = getState(stateContext.getSource())
         val targetState = getState(stateContext.getTarget())
 
@@ -152,7 +166,7 @@ class StateMachine private constructor(var name: String?=null,private val initia
     /**
      * 状态切换
      */
-    private fun switchState(stateContext: StateContext) {
+    private suspend fun switchState(stateContext: StateContext) {
         try {
             val guard = stateContext.getTransition().getGuard()?.invoke()?:true
 
@@ -186,7 +200,7 @@ class StateMachine private constructor(var name: String?=null,private val initia
         }
     }
 
-    private fun executeAction(stateContext: StateContext) {
+    private suspend fun  executeAction(stateContext: StateContext) {
         val transition = stateContext.getTransition()
         transition.transit(stateContext)
     }
@@ -261,7 +275,24 @@ class StateMachine private constructor(var name: String?=null,private val initia
          * @param initialStateName 状态机初始的 State 名称
          * @param init 初始化状态机的 block
          */
-        fun buildStateMachine(name:String = "StateMachine", initialStateName: BaseState, init: StateMachine.() -> Unit): StateMachine =
+        fun buildStateMachine(name:String, initialStateName: BaseState, init: StateMachine.() -> Unit): StateMachine =
             StateMachine(name,initialStateName).apply(init)
     }
+
+    private var stateCoroutineContext = SupervisorJob() + CoroutineName("StateMachine-$name")
+    var stateScope = CloseableCoroutineScope(stateCoroutineContext)
+
+
+    class CloseableCoroutineScope(context: CoroutineContext) : Closeable, CoroutineScope {
+        override val coroutineContext: CoroutineContext = context
+
+        override fun close() {
+            coroutineContext.cancel()
+        }
+    }
+
+    fun release() {
+        stateScope.cancel()
+    }
+
 }

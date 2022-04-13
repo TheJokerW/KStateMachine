@@ -31,7 +31,7 @@ class SubState(subStateName: BaseState,vararg states: State):State(subStateName)
         }
     }
 
-    override fun processEvent(event: BaseEvent): Boolean = when {
+    override suspend fun processEvent(event: BaseEvent): Boolean = when {
         subStateMachine.sendEvent(event) -> true
         else -> super.processEvent(event)
     }

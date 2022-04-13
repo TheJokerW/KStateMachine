@@ -106,8 +106,7 @@ open class State(val name: BaseState): IState {
         return transitions[event]?:throw IllegalStateException("Event $event isn't registered with state ${this.name} in statemachine:${owner?.name}")
     }
 
-    internal open fun processEvent(event: BaseEvent): Boolean {
-
+    internal open suspend fun processEvent(event: BaseEvent): Boolean {
         getTransitionForEvent(event).takeIf { owner!=null }?.let {
             owner!!.executeTransition(it, event)
             return true
