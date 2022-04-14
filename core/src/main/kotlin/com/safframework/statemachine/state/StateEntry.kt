@@ -1,6 +1,11 @@
 package com.safframework.statemachine.state
 
 import com.safframework.statemachine.StateAction
+import com.safframework.statemachine.TransitionAction
+import com.safframework.statemachine.transition.Transition
+import kotlinx.coroutines.CoroutineScope
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  *
@@ -17,8 +22,14 @@ class StateEntry {
     /**
      * 添加一个 action，在状态转换时执行(时间点是在状态转换之前)
      */
-    fun action(action: StateAction) {
-        actions.add(action)
+    private fun action(action: () -> StateAction){
+        actions.add(action.invoke())
+    }
+
+    fun stateAction(context: CoroutineContext = EmptyCoroutineContext, action: (State, CoroutineScope) -> Unit){
+        action{
+            StateAction(context, action)
+        }
     }
 
     fun getActions() = actions

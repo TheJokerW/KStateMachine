@@ -1,12 +1,16 @@
 package com.safframework.statemachine.state
 
 import com.safframework.statemachine.Guard
+import com.safframework.statemachine.StateAction
 import com.safframework.statemachine.StateMachine
 import com.safframework.statemachine.transition.Transition
 import com.safframework.statemachine.exception.StateMachineException
 import com.safframework.statemachine.model.BaseEvent
 import com.safframework.statemachine.model.BaseState
 import com.safframework.statemachine.transition.TransitionType
+import kotlinx.coroutines.CoroutineScope
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 构成状态机的基本单位，状态机在任何特定时间都可处于某一状态。
@@ -83,18 +87,18 @@ open class State(val name: BaseState): IState {
     /**
      * 进入 State 并执行所有的 Action
      */
-    override fun enter() {
+    override suspend fun enter(coroutineScope: CoroutineScope) {
         entry?.let {
-            it.getActions().forEach{ action -> action.invoke(this) }
+            it.getActions().forEach{ action -> action.action(this,coroutineScope) }
         }
     }
 
     /**
      * 退出 State 并执行所有的 Action
      */
-    override fun exit() {
+    override suspend fun exit(coroutineScope: CoroutineScope) {
         exit?.let {
-            it.getActions().forEach{ action -> action.invoke(this) }
+            it.getActions().forEach{ action -> action.action(this,coroutineScope) }
         }
     }
 

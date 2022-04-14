@@ -54,7 +54,7 @@ class StateMachine private constructor(var name: String,private val initialState
     /**
      * 初始化状态机，并进入初始化状态，保证只初始化一次防止多次初始化
      */
-    fun initialize() {
+    suspend fun initialize() {
         if(initialized.compareAndSet(false, true)){
             currentState = getState(initialState)
             currentState.owner = this@StateMachine
@@ -62,7 +62,7 @@ class StateMachine private constructor(var name: String,private val initialState
             currentState.addParent(this)
             descendantStates.add(currentState)
             globalInterceptor?.stateEntered(currentState)
-            currentState.enter()
+            currentState.enter(stateScope)
         }
     }
 
@@ -190,8 +190,8 @@ class StateMachine private constructor(var name: String,private val initialState
         }
     }
 
-    private fun exitState(stateContext: StateContext) {
-        currentState.exit()
+    private suspend fun exitState(stateContext: StateContext) {
+        currentState.exit(stateScope)
 
         globalInterceptor?.apply {
             stateContext(stateContext)
@@ -205,7 +205,7 @@ class StateMachine private constructor(var name: String,private val initialState
         transition.transit(stateContext)
     }
 
-    private fun enterState(stateContext: StateContext) {
+    private suspend fun enterState(stateContext: StateContext) {
         val sourceState = getState(stateContext.getSource())
         val targetState = getState(stateContext.getTarget())
         val targetLevel = targetState.owner!!.path.size
@@ -224,7 +224,7 @@ class StateMachine private constructor(var name: String,private val initialState
             getState(nextState.name)
         }
 
-        currentState.enter()
+        currentState.enter(stateScope)
 
         globalInterceptor?.apply {
             stateEntered(currentState)

@@ -14,9 +14,9 @@ import kotlin.coroutines.EmptyCoroutineContext
  * @date: 2020-02-19 23:54
  * @version: V1.0 <描述当前版本功能>
  */
-typealias StateAction = (State) -> Unit
 
 typealias Guard = () -> Boolean
 
 class TransitionAction(val coroutineContext:CoroutineContext = EmptyCoroutineContext, val action:suspend (Transition, CoroutineScope) -> Unit)
+class StateAction(val coroutineContext:CoroutineContext = EmptyCoroutineContext, val action:suspend (State, CoroutineScope) -> Unit)
 

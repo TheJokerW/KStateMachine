@@ -5,6 +5,7 @@ import com.safframework.statemachine.transition.Transition
 import com.safframework.statemachine.model.BaseEvent
 import com.safframework.statemachine.model.BaseState
 import com.safframework.statemachine.transition.TransitionType
+import kotlinx.coroutines.CoroutineScope
 
 /**
  *
@@ -16,9 +17,9 @@ import com.safframework.statemachine.transition.TransitionType
  */
 interface IState {
 
-    fun enter()
+    suspend fun enter(coroutineScope: CoroutineScope)
 
-    fun exit()
+    suspend fun exit(coroutineScope: CoroutineScope)
 
     fun transition(event: BaseEvent, targetState: BaseState, transitionType: TransitionType = TransitionType.External, guard: Guard?=null, init: (Transition.() -> Unit)?=null): IState
 }
